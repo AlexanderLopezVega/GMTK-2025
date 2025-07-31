@@ -4,9 +4,8 @@ kanban-plugin: board
 
 ---
 
-## Backlog
+## To-do
 
-- [ ] The player can move around
 - [ ] The hook can move around
 - [ ] The hook detects loops
 - [ ] The hook pulls objects towards the player when looped around
@@ -18,15 +17,12 @@ kanban-plugin: board
 - [ ] Trains can go through portals
 
 
-## In Progress
-
-
-
-## Verification
-
-
-
 ## Done
+
+- [ ] The player can move around
+
+
+## Working
 
 
 
@@ -34,6 +30,6 @@ kanban-plugin: board
 
 %% kanban:settings
 ```
-{"kanban-plugin":"board","list-collapse":[false,false,false,false]}
+{"kanban-plugin":"board","list-collapse":[false,false,false]}
 ```
 %%

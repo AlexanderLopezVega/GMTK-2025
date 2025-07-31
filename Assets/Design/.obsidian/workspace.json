@@ -19,7 +19,6 @@
                   "list-collapse": [
                     false,
                     false,
-                    false,
                     false
                   ]
                 }
@@ -173,6 +172,6 @@
       "obsidian-kanban:Create new board": false
     }
   },
-  "active": "ecb262562630f4a1",
+  "active": "b1cdb0fa328e8887",
   "lastOpenFiles": []
 }
