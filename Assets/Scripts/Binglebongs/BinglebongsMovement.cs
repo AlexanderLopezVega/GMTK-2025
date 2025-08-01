@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static UnityEngine.InputSystem.InputAction;
 
@@ -85,7 +87,9 @@ public class BinglebongsMovement : Element
 
 		++_distance;
 
-		if (HasReachedMaximumDistance())
+		if (HandleLoop())
+			return;
+		else if (HasReachedMaximumDistance())
 			Reset();
 		else if (_moveInput == Vector2.zero)
 			StopMoving();
@@ -95,6 +99,51 @@ public class BinglebongsMovement : Element
 	private bool HasReachedTarget()
 	{
 		return Vector3.Distance(_localPosition, _targetPosition) < DistanceThreshold;
+	}
+	private bool HandleLoop()
+	{
+		Vector3[] positions;
+		List<Vector3> gridCentres;
+		Collider[] foundColliders;
+		HashSet<GameObject> trappedGameObjects;
+		int numPositions;
+		int i;
+
+		positions = new Vector3[_lineRenderer.positionCount];
+		numPositions = _lineRenderer.GetPositions(positions);
+
+		for (i = 0; i < numPositions - 1; ++i)
+			if (Vector3.Distance(positions[i], positions[numPositions - 1]) < DistanceThreshold)
+				break;
+
+		if (i == numPositions - 1)
+			return false;
+
+		trappedGameObjects = new HashSet<GameObject>();
+		gridCentres = Utils.GetGridCentersInsidePolygon(
+			positions
+			.Skip(i)
+			.Take(numPositions - i)
+			.ToArray()
+		);
+
+		foreach (Vector3 gridCentre in gridCentres)
+		{
+			foundColliders = Physics.OverlapBox(
+				gridCentre,
+				_binglebongsConfig.TileSize * Vector3.one
+			);
+
+			foreach (Collider collider in foundColliders)
+				trappedGameObjects.Add(collider.attachedRigidbody.gameObject);
+		}
+
+		foreach (GameObject gameObject in trappedGameObjects)
+			Debug.Log($"Trapped {gameObject}");
+
+		Reset();
+		
+		return true;
 	}
 	private void MoveToTarget(float deltaTime)
 	{

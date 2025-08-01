@@ -6,12 +6,14 @@ public class Binglebongs : MonoBehaviour
 	[Header("Dependencies")]
 	[SerializeField] private Transform _head;
 	[SerializeField] private LineRenderer _lineRenderer;
+	[SerializeField] private Renderer[] _renderers;
 	[Header("Options")]
 	[SerializeField] private BinglebongsConfig _binglebongsConfig;
 
 	//	Fields
 	private Input _input;
 	private BinglebongsMovement _binglebongsMovement;
+	private BinglebongsGraphics _binglebongsGraphics;
 
 	//	Properties
 	public BinglebongsMovement Movement => _binglebongsMovement;
@@ -26,16 +28,21 @@ public class Binglebongs : MonoBehaviour
 			_lineRenderer,
 			_head
 		);
+		_binglebongsGraphics = new BinglebongsGraphics(
+			_renderers
+		);
 	}
 	private void OnEnable()
 	{
 		_input.Enable();
 		_binglebongsMovement.Enable();
+		_binglebongsGraphics.Enable();
 	}
 	private void OnDisable()
 	{
 		_input.Disable();
 		_binglebongsMovement.Disable();
+		_binglebongsGraphics.Disable();
 	}
 	private void Update()
 	{

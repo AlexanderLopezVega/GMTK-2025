@@ -48,4 +48,14 @@ public class Scrimblino : MonoBehaviour
 	{
 		_scrimblinoMovement.Update(Time.deltaTime);
 	}
+	private void OnTriggerEnter(Collider other)
+	{
+		if (other.attachedRigidbody.TryGetComponent(out Wagon wagon))
+			_scrimblinoMovement.OnEnterWagon(wagon.Movement.Velocity);
+	}
+	private void OnTriggerExit(Collider other)
+	{
+		if (other.attachedRigidbody.TryGetComponent(out Wagon wagon))
+			_scrimblinoMovement.OnExitWagon(wagon.Movement.Velocity);
+	}
 }
