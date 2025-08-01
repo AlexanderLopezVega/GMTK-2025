@@ -1,17 +1,22 @@
+using System;
 using UnityEngine;
 using static UnityEngine.InputSystem.InputAction;
 
 public class HookMovement
 {
+	//	constants
+	private const float DistanceThreshold = 0.01f;
+
 	//	Fields
 	private readonly HookConfig _hookConfig;
 	private readonly Input _input;
 	private readonly LineRenderer _lineRenderer;
 	private readonly Transform _head;
+	private HookState _hookState;
 	private Vector3 _localPosition;
 	private Vector3 _targetPosition;
 	private Vector3 _moveDirection;
-	private float _distance;
+	private uint _distance;
 	private Vector2 _moveInput;
 
 	//	Constructors
@@ -26,6 +31,14 @@ public class HookMovement
 		_input = input;
 		_lineRenderer = lineRenderer;
 		_head = head;
+		_hookState = HookState.Idle;
+	}
+
+	//	Enumerations
+	private enum HookState
+	{
+		Idle,
+		Moving
 	}
 
 	//	Methods
@@ -33,6 +46,10 @@ public class HookMovement
 	{
 		_input.OnMove += OnMove;
 		_lineRenderer.positionCount = 1;
+		_head.localRotation = Quaternion.LookRotation(
+			Vector3.up,
+			Vector3.back
+		);
 	}
 	public void Disable()
 	{
@@ -40,66 +57,105 @@ public class HookMovement
 	}
 	public void Update(float deltaTime)
 	{
-		float motion;
-
-		if (Vector3.Distance(_localPosition, _targetPosition) < 0.01f)
+		switch (_hookState)
 		{
-			if (_moveDirection == Vector3.zero && _moveInput == Vector2.zero)
-				return;
-
-			_targetPosition = _lineRenderer.GetPosition(_lineRenderer.positionCount - 1) + _hookConfig.TileSize * _moveDirection;
-		}
-
-		motion = _hookConfig.MoveSpeed * deltaTime;
-		_localPosition = Vector3.MoveTowards(
-			_localPosition,
-			_targetPosition,
-			motion
-		);
-		_distance += motion;
-
-		if (Vector3.Distance(_localPosition, _targetPosition) < 0.01f)
-		{
-			if (_distance >= _hookConfig.MaxDistance)
-			{
-				_distance -= _hookConfig.MaxDistance;
-				_lineRenderer.positionCount = 1;
-				_targetPosition = Vector3.zero;
-				_localPosition = Vector3.zero;
-				_head.SetPositionAndRotation(
-					_localPosition,
-					Quaternion.LookRotation(
-						_moveDirection,
-						Vector3.back
-					)
-				);
-				_head.position += Vector3.back * 0.1f;
-				_moveDirection = Vector3.zero;
-				return;
-			}
-
-			if (_moveInput == Vector2.zero)
-				_moveDirection = Vector3.zero;
-			else
-			{
-				++_lineRenderer.positionCount;
-				_moveDirection = _moveInput;
-				_targetPosition += _hookConfig.TileSize * _moveDirection;
-			}
-		}
-		else
-		{
-			_lineRenderer.SetPosition(_lineRenderer.positionCount - 1, _localPosition);
-			_head.SetPositionAndRotation(
-				_localPosition,
-				Quaternion.LookRotation(
-					_moveDirection,
-					Vector3.back
-				)
-			);
+			case HookState.Idle: UpdateIdle(); break;
+			case HookState.Moving: UpdateMoving(deltaTime); break;
 		}
 	}
 
+	private void UpdateIdle()
+	{
+		if (_moveInput == default)
+			return;
+
+		_moveDirection = _moveInput;
+		_hookState = HookState.Moving;
+		AddBodySegment();
+		RecalculateTarget();
+	}
+	private void UpdateMoving(float deltaTime)
+	{
+		MoveToTarget(deltaTime);
+
+		if (!HasReachedTarget())
+			return;
+
+		++_distance;
+
+		if (HasReachedMaximumDistance())
+			Reset();
+		else if (_moveInput == Vector2.zero)
+			StopMoving();
+		else
+			RecalculateTarget();
+	}
+	private bool HasReachedTarget()
+	{
+		return Vector3.Distance(_localPosition, _targetPosition) < DistanceThreshold;
+	}
+	private void MoveToTarget(float deltaTime)
+	{
+		_localPosition = Vector3.MoveTowards(
+			_localPosition,
+			_targetPosition,
+			_hookConfig.MoveSpeed * deltaTime
+		);
+		UpdateGraphics();
+	}
+	private bool HasReachedMaximumDistance()
+	{
+		return _distance >= _hookConfig.MaxDistance;
+	}
+	private void Reset()
+	{
+		_localPosition = default;
+		_lineRenderer.positionCount = 1;
+		_lineRenderer.SetPosition(_lineRenderer.positionCount - 1, default);
+		_distance = 0;
+		StopMoving();
+	}
+	private void StopMoving()
+	{
+		_targetPosition = _localPosition;
+		_moveInput = default;
+		_moveDirection = default;
+		_hookState = HookState.Idle;
+		
+		UpdateGraphics();
+	}
+	private void RecalculateTarget()
+	{
+		Vector3 newMoveDirection;
+
+		newMoveDirection = _moveInput;
+
+		if (_moveDirection != newMoveDirection)
+		{
+			_moveDirection = newMoveDirection;
+			AddBodySegment();
+		}
+
+		_targetPosition = _localPosition + _hookConfig.TileSize * _moveDirection;
+	}
+	private void UpdateGraphics()
+	{
+		_lineRenderer.SetPosition(_lineRenderer.positionCount - 1, _localPosition);
+		_head.SetLocalPositionAndRotation(
+			_localPosition,
+			(_moveDirection == default)
+				? _head.localRotation
+				: Quaternion.LookRotation(
+					_moveDirection,
+					Vector3.back
+				)
+		);
+	}
+	private void AddBodySegment()
+	{
+		++_lineRenderer.positionCount;
+		_lineRenderer.SetPosition(_lineRenderer.positionCount - 1, _localPosition);
+	}
 	private void OnMove(CallbackContext context)
 	{
 		Vector2 newMoveInput;
