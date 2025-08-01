@@ -1,48 +1,75 @@
 using UnityEngine;
+using static UnityEngine.InputSystem.InputAction;
 
 public class Player : MonoBehaviour
 {
 	//	Inspector
 	[Header("Dependencies")]
-	[SerializeField] private Rigidbody _rigidbody;
-	[SerializeField] private Animator _animator;
-	[SerializeField] private SpriteRenderer _spriteRenderer;
-
-	[Header("Options")]
-	[SerializeField] private PlayerConfig _playerConfig;
+	[SerializeField] private Scrimblino _scrimblino;
+	[SerializeField] private Binglebongs _binglebongs;
 
 	//	Fields
 	private Input _input;
-	private PlayerMovement _playerMovement;
-	private PlayerAnimator _playerAnimator;
+	private State _state;
+
+	//	Enumerations
+	private enum State
+	{
+		Scrimblino,
+		Binglebongs
+	}
 
 	//	Methods
-	private void Start()
+	private void Awake()
 	{
 		_input = new Input(new Controls());
-		_playerMovement = new PlayerMovement(
-			_playerConfig,
-			_input,
-			_rigidbody
-		);
-		_playerAnimator = new PlayerAnimator(
-			_input,
-			_spriteRenderer,
-			_animator
-		);
-
+		_state = State.Scrimblino;
+	}
+	private void Start()
+	{
 		_input.Enable();
-		_playerMovement.Enable();
-		_playerAnimator.Enable();
+		_input.OnHook += OnHook;
+		_binglebongs.Movement.OnReset += OnBinglebongsReset;
+		UpdateState();
 	}
 	private void OnDestroy()
 	{
 		_input.Disable();
-		_playerMovement.Disable();
-		_playerAnimator.Disable();
+		_input.OnHook -= OnHook;
+		_binglebongs.Movement.OnReset -= OnBinglebongsReset;
 	}
-	private void Update()
+
+	private void SetState(State state)
 	{
-		_playerMovement.Update(Time.deltaTime);
+		_state = state;
+		UpdateState();
+	}
+	private void UpdateState()
+	{
+		switch (_state)
+		{
+			case State.Scrimblino:
+				{
+					_scrimblino.enabled = true;
+					_binglebongs.enabled = false;
+				}
+				break;
+			case State.Binglebongs:
+				{
+					_scrimblino.enabled = false;
+					_binglebongs.enabled = true;
+				}
+				break;
+		}
+	}
+	private void OnBinglebongsReset()
+	{
+		if (_state == State.Binglebongs)
+			SetState(State.Scrimblino);
+	}
+	private void OnHook(CallbackContext context)
+	{
+		if (context.performed && _state == State.Scrimblino)
+			SetState(State.Binglebongs);
 	}
 }

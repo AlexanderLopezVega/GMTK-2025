@@ -10,6 +10,6 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 43ed2a22b86290643a46f3db0725fa5b, type: 3}
-  m_Name: Player Config
+  m_Name: ScrimblinoHook Config
   m_EditorClassIdentifier: 
   <MoveSpeed>k__BackingField: 2

@@ -1,17 +1,17 @@
 using UnityEngine;
 using static UnityEngine.InputSystem.InputAction;
 
-public class PlayerMovement
+public class ScrimblinoMovement : Element
 {
 	//	Fields
-	private readonly PlayerConfig _playerConfig;
+	private readonly ScrimblinoConfig _playerConfig;
 	private readonly Input _input;
 	private readonly Rigidbody _rigidbody;
 	private Vector2 _moveInput;
 
 	//	Constructors
-	public PlayerMovement(
-		PlayerConfig playerConfig,
+	public ScrimblinoMovement(
+		ScrimblinoConfig playerConfig,
 		Input input,
 		Rigidbody rigidbody
 	)
@@ -22,11 +22,11 @@ public class PlayerMovement
 	}
 
 	//	Methods
-	public void Enable()
+	protected override void OnEnabled()
 	{
 		_input.OnMove += OnMove;
 	}
-	public void Disable()
+	protected override void OnDisabled()
 	{
 		_input.OnMove -= OnMove;
 	}
@@ -40,6 +40,12 @@ public class PlayerMovement
 
 	private void OnMove(CallbackContext context)
 	{
-		_moveInput = context.ReadValue<Vector2>();
+		Vector2 newMoveInput;
+
+		if (context.started)
+			return;
+
+		newMoveInput = context.ReadValue<Vector2>();
+		_moveInput = Utils.NANDVector(_moveInput, newMoveInput);
 	}
 }

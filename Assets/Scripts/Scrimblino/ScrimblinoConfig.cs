@@ -1,7 +1,7 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Project / Player Config")]
-public class PlayerConfig : ScriptableObject
+[CreateAssetMenu(menuName = "Project / Scrimblino Config")]
+public class ScrimblinoConfig : ScriptableObject
 {
 	//	Inspector
 	[field: Header("Movement")]

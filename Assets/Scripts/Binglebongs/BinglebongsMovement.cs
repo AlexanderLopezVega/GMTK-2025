@@ -2,17 +2,17 @@ using System;
 using UnityEngine;
 using static UnityEngine.InputSystem.InputAction;
 
-public class HookMovement
+public class BinglebongsMovement : Element
 {
 	//	constants
 	private const float DistanceThreshold = 0.01f;
 
 	//	Fields
-	private readonly HookConfig _hookConfig;
+	private readonly BinglebongsConfig _binglebongsConfig;
 	private readonly Input _input;
 	private readonly LineRenderer _lineRenderer;
 	private readonly Transform _head;
-	private HookState _hookState;
+	private BinglebongsState _binglebongsState;
 	private Vector3 _localPosition;
 	private Vector3 _targetPosition;
 	private Vector3 _moveDirection;
@@ -20,47 +20,49 @@ public class HookMovement
 	private Vector2 _moveInput;
 
 	//	Constructors
-	public HookMovement(
-		HookConfig hookConfig,
+	public BinglebongsMovement(
+		BinglebongsConfig binglebongsConfig,
 		Input input,
 		LineRenderer lineRenderer,
 		Transform head
 	)
 	{
-		_hookConfig = hookConfig;
+		_binglebongsConfig = binglebongsConfig;
 		_input = input;
 		_lineRenderer = lineRenderer;
 		_head = head;
-		_hookState = HookState.Idle;
+		_binglebongsState = BinglebongsState.Idle;
 	}
 
+	//	Events
+	public Action OnReset;
+
 	//	Enumerations
-	private enum HookState
+	private enum BinglebongsState
 	{
 		Idle,
 		Moving
 	}
 
 	//	Methods
-	public void Enable()
+	protected override void OnEnabled()
 	{
-		_input.OnMove += OnMove;
+		_localPosition = default;
 		_lineRenderer.positionCount = 1;
-		_head.localRotation = Quaternion.LookRotation(
-			Vector3.up,
-			Vector3.back
-		);
+		_lineRenderer.SetPosition(_lineRenderer.positionCount - 1, default);
+		_distance = 0;
+		_input.OnMove += OnMove;
 	}
-	public void Disable()
+	protected override void OnDisabled()
 	{
 		_input.OnMove -= OnMove;
 	}
 	public void Update(float deltaTime)
 	{
-		switch (_hookState)
+		switch (_binglebongsState)
 		{
-			case HookState.Idle: UpdateIdle(); break;
-			case HookState.Moving: UpdateMoving(deltaTime); break;
+			case BinglebongsState.Idle: UpdateIdle(); break;
+			case BinglebongsState.Moving: UpdateMoving(deltaTime); break;
 		}
 	}
 
@@ -70,7 +72,7 @@ public class HookMovement
 			return;
 
 		_moveDirection = _moveInput;
-		_hookState = HookState.Moving;
+		_binglebongsState = BinglebongsState.Moving;
 		AddBodySegment();
 		RecalculateTarget();
 	}
@@ -99,13 +101,13 @@ public class HookMovement
 		_localPosition = Vector3.MoveTowards(
 			_localPosition,
 			_targetPosition,
-			_hookConfig.MoveSpeed * deltaTime
+			_binglebongsConfig.MoveSpeed * deltaTime
 		);
 		UpdateGraphics();
 	}
 	private bool HasReachedMaximumDistance()
 	{
-		return _distance >= _hookConfig.MaxDistance;
+		return _distance >= _binglebongsConfig.MaxDistance;
 	}
 	private void Reset()
 	{
@@ -113,15 +115,20 @@ public class HookMovement
 		_lineRenderer.positionCount = 1;
 		_lineRenderer.SetPosition(_lineRenderer.positionCount - 1, default);
 		_distance = 0;
+		_head.localRotation = Quaternion.LookRotation(
+			Vector3.up,
+			Vector3.back
+		);
 		StopMoving();
+
+		OnReset?.Invoke();
 	}
 	private void StopMoving()
 	{
 		_targetPosition = _localPosition;
 		_moveInput = default;
 		_moveDirection = default;
-		_hookState = HookState.Idle;
-		
+		_binglebongsState = BinglebongsState.Idle;
 		UpdateGraphics();
 	}
 	private void RecalculateTarget()
@@ -136,7 +143,7 @@ public class HookMovement
 			AddBodySegment();
 		}
 
-		_targetPosition = _localPosition + _hookConfig.TileSize * _moveDirection;
+		_targetPosition = _localPosition + _binglebongsConfig.TileSize * _moveDirection;
 	}
 	private void UpdateGraphics()
 	{
@@ -159,28 +166,11 @@ public class HookMovement
 	private void OnMove(CallbackContext context)
 	{
 		Vector2 newMoveInput;
-		float absX;
-		float absY;
 
 		if (context.started)
 			return;
 
 		newMoveInput = context.ReadValue<Vector2>();
-		absX = Mathf.Abs(newMoveInput.x);
-		absY = Mathf.Abs(newMoveInput.y);
-
-		if (absX > absY)
-			newMoveInput.y = 0f;
-		else if (absX < absY)
-			newMoveInput.x = 0f;
-		else
-		{
-			if (_moveInput.x != newMoveInput.x)
-				newMoveInput.y = 0f;
-			else
-				newMoveInput.x = 0f;
-		}
-
-		_moveInput = newMoveInput;
+		_moveInput = Utils.NANDVector(_moveInput, newMoveInput);
 	}
 }

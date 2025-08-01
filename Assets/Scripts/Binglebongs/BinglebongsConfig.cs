@@ -1,7 +1,7 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Project / Hook Config")]
-public class HookConfig : ScriptableObject
+[CreateAssetMenu(menuName = "Project / Binglebongs Config")]
+public class BinglebongsConfig : ScriptableObject
 {
 	//	Inspector
 	[field: Header("Movement")]
