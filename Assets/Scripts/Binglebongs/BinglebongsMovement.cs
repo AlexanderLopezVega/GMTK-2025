@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEngine.InputSystem.InputAction;
 
@@ -13,6 +14,7 @@ public class BinglebongsMovement : Element
 	private readonly BinglebongsConfig _binglebongsConfig;
 	private readonly Input _input;
 	private readonly LineRenderer _lineRenderer;
+	private readonly Transform _root;
 	private readonly Transform _head;
 	private BinglebongsState _binglebongsState;
 	private Vector3 _localPosition;
@@ -26,18 +28,21 @@ public class BinglebongsMovement : Element
 		BinglebongsConfig binglebongsConfig,
 		Input input,
 		LineRenderer lineRenderer,
+		Transform root,
 		Transform head
 	)
 	{
 		_binglebongsConfig = binglebongsConfig;
 		_input = input;
 		_lineRenderer = lineRenderer;
+		_root = root;
 		_head = head;
 		_binglebongsState = BinglebongsState.Idle;
 	}
 
 	//	Events
 	public Action OnReset;
+	public Action<Hook> OnHookFound;
 
 	//	Enumerations
 	private enum BinglebongsState
@@ -72,11 +77,8 @@ public class BinglebongsMovement : Element
 	{
 		if (_moveInput == default)
 			return;
-
-		_moveDirection = _moveInput;
-		_binglebongsState = BinglebongsState.Moving;
-		AddBodySegment();
-		RecalculateTarget();
+		if (RecalculateTarget())
+			_binglebongsState = BinglebongsState.Moving;
 	}
 	private void UpdateMoving(float deltaTime)
 	{
@@ -85,11 +87,10 @@ public class BinglebongsMovement : Element
 		if (!HasReachedTarget())
 			return;
 
+		_localPosition = _targetPosition;
 		++_distance;
 
-		if (HandleLoop())
-			return;
-		else if (HasReachedMaximumDistance())
+		if (HandleLoop() || HasReachedMaximumDistance())
 			Reset();
 		else if (_moveInput == Vector2.zero)
 			StopMoving();
@@ -130,16 +131,25 @@ public class BinglebongsMovement : Element
 		foreach (Vector3 gridCentre in gridCentres)
 		{
 			foundColliders = Physics.OverlapBox(
-				gridCentre,
+				_root.TransformPoint(gridCentre),
 				_binglebongsConfig.TileSize * Vector3.one
 			);
 
 			foreach (Collider collider in foundColliders)
-				trappedGameObjects.Add(collider.attachedRigidbody.gameObject);
+				if (collider.TryGetComponent(out RootLink rootLink))
+					trappedGameObjects.Add(rootLink.Root.gameObject);
 		}
 
 		foreach (GameObject gameObject in trappedGameObjects)
-			Debug.Log($"Trapped {gameObject}");
+		{
+			if (gameObject.TryGetComponent(out Hook hook))
+			{
+				OnHookFound?.Invoke(hook);
+				return true;
+			}
+		}
+
+		Debug.Log("No hook related items found");
 
 		Reset();
 		
@@ -180,19 +190,38 @@ public class BinglebongsMovement : Element
 		_binglebongsState = BinglebongsState.Idle;
 		UpdateGraphics();
 	}
-	private void RecalculateTarget()
+	private bool RecalculateTarget()
 	{
-		Vector3 newMoveDirection;
-
-		newMoveDirection = _moveInput;
-
-		if (_moveDirection != newMoveDirection)
+		bool IsPreviousPosition(Vector3 position)
 		{
-			_moveDirection = newMoveDirection;
-			AddBodySegment();
+			float distance;
+
+			if (_lineRenderer.positionCount < 2)
+				return false;
+
+			distance = Vector3.Distance(
+				_lineRenderer.GetPosition(_lineRenderer.positionCount - 2),
+				position
+			);
+			return distance < 0.01f;
 		}
 
-		_targetPosition = _localPosition + _binglebongsConfig.TileSize * _moveDirection;
+		Vector3 newMoveDirection;
+		Vector3 newPosition;
+
+		newMoveDirection = _moveInput;
+		newPosition = _localPosition + _binglebongsConfig.TileSize * newMoveDirection;
+
+		if (_moveDirection != newMoveDirection && !IsPreviousPosition(newPosition))
+		{
+			_moveDirection = newMoveDirection;
+			_targetPosition = _localPosition + _binglebongsConfig.TileSize * _moveDirection;
+
+			AddBodySegment();
+			return true;
+		}
+
+		return false;
 	}
 	private void UpdateGraphics()
 	{

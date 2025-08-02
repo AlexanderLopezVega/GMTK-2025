@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class Scrimblino : MonoBehaviour
@@ -7,7 +8,6 @@ public class Scrimblino : MonoBehaviour
 	[SerializeField] private Rigidbody _rigidbody;
 	[SerializeField] private Animator _animator;
 	[SerializeField] private SpriteRenderer _spriteRenderer;
-	[SerializeField] private Binglebongs _hook;
 
 	[Header("Options")]
 	[SerializeField] private ScrimblinoConfig _scrimblinoConfig;
@@ -57,5 +57,10 @@ public class Scrimblino : MonoBehaviour
 	{
 		if (other.attachedRigidbody.TryGetComponent(out Wagon wagon))
 			_scrimblinoMovement.OnExitWagon(wagon.Movement.Velocity);
+	}
+
+	public void MoveToHook(Hook hook)
+	{
+		_scrimblinoMovement.MoveToHook(hook);
 	}
 }
